@@ -3,142 +3,110 @@
 #include <string.h>
 #include <math.h>
 
+class Vector2() 
+{
+  public:
+    uint16_t X;
+    uint16_t Y;
+
+    Vector2() 
+    {
+      
+    }
+}
+
 struct DataEntry 
 {
   String File_ID;
-  int Size;
-  int Start_Address;
+  uint16_t Size;
+  uint16_t Start_Address;
 
-  int Data;
+  uint16_t Data;
 
 };
 
 // Pins
 
-int WE = 22;
+uint16_t WE = 22;
 
-int D0 = 23;
-int D1 = 24;
-int D2 = 25;
-int D3 = 26;
+uint16_t D0 = 23;
+uint16_t D1 = 24;
+uint16_t D2 = 25;
+uint16_t D3 = 26;
 
-int Ad0 = 27;
-int Ad1 = 28;
-int Ad2 = 29;
-int Ad3 = 30;
-int Ad4 = 31;
-int Ad5 = 32;
-int Ad6 = 33;
-int Ad7 = 34;
-int Ad8 = 35;
-int Ad9 = 36;
+uint16_t Ad0 = 27;
+uint16_t Ad1 = 28;
+uint16_t Ad2 = 29;
+uint16_t Ad3 = 30;
+uint16_t Ad4 = 31;
+uint16_t Ad5 = 32;
+uint16_t Ad6 = 33;
+uint16_t Ad7 = 34;
+uint16_t Ad8 = 35;
+uint16_t Ad9 = 36;
 
 // Configurations 
 
-int MemorySize = 1024;
-int Address = 27;
-int BinaryAddress[10];
+uint16_t MemorySize = 1024;
+uint16_t Address = 27;
 
-int* decimalToBinary(int add) 
+const uint16_t AddressSize = 32;
+const uint16_t SlotSize = 4;
+
+uint16_t BinaryAddress[AddressSize];
+uint16_t RetrievedData[SlotSize];
+
+uint16_t* decimalToBinary(uint16_t add, uint16_t Size) 
 {
-  static int newAddress[10];
+  uint16_t* binary = new uint16_t[Size];
+  Serial.println("--Converting--");
 
-  for (int i = 9; i >= 0; i--)
+  for (uint16_t i = 0; i < Size; i++)
   {
-    int v = (add >> i) & 1;
-    newAddress[9 - i] = v;
+    binary[i] = add % 2;
+    Serial.println(binary[i]);
+    add = add / 2;
   }
 
-  return newAddress;
+  return binary;
+}
+
+void StoreMemory(uint16_t* binary) 
+{
+  WriteEnable(true);
+
+  digitalWrite(D0, binary[0]);
+  digitalWrite(D1, binary[1]);
+  digitalWrite(D2, binary[2]);
+  digitalWrite(D3, binary[3]);
+}
+
+void ReadMemory() 
+{
 
 }
 
-int* retrieveData(DataEntry& dataEntry)  
+void WriteEnable(bool Enable) 
 {
-
-  int loc = dataEntry.Start_Address;
-  int size = dataEntry.Size;
-
-  int retrievedData[size];
-
-  setLocation(loc);
-  SetMode(true);
-
-  retrievedData[0] = digitalRead(D0);
-  retrievedData[1] = digitalRead(D1);
-  retrievedData[2] = digitalRead(D2);
-  retrievedData[3] = digitalRead(D3);
-
-  Serial.print("Reading Pin and Size: ");
-  Serial.println(sizeof(retrievedData) / sizeof(int));
-  Serial.println(digitalRead(D0));
-  Serial.println(digitalRead(D1));
-  Serial.println(digitalRead(D2));
-  Serial.println(digitalRead(D3));
-
-  return retrievedData;
-
-}
-
-void setLocation(int location) 
-{
-  int* Data_Address = decimalToBinary(location);
-
-  digitalWrite(Ad0, Data_Address[0]);
-  digitalWrite(Ad1, Data_Address[1]);
-  digitalWrite(Ad2, Data_Address[2]);
-  digitalWrite(Ad3, Data_Address[3]);
-  digitalWrite(Ad4, Data_Address[4]);
-  digitalWrite(Ad5, Data_Address[5]);
-  digitalWrite(Ad6, Data_Address[6]);
-  digitalWrite(Ad7, Data_Address[7]);
-  digitalWrite(Ad8, Data_Address[8]);
-  digitalWrite(Ad9, Data_Address[9]);
-
-}
-
-void storeData(int location, DataEntry& dataEntry) 
-{
-  dataEntry.Start_Address = location;
-  int* Data = decimalToBinary(dataEntry.Data);
-
-  setLocation(location);
-
-  if (ceil(sizeof(Data) / sizeof(int)) > 4) 
+  if (Enable == true) 
   {
-  }
-  else 
-  {
-    digitalWrite(D0, Data[0]);
-    digitalWrite(D1, Data[1]);
-    digitalWrite(D2, Data[2]);
-    digitalWrite(D3, Data[3]);
-  }
-}
-
-void SetMode(bool Read) 
-{
-  if (Read == true) 
-  {
-    pinMode(D0, INPUT);
-    pinMode(D1, INPUT);
-    pinMode(D2, INPUT);
-    pinMode(D3, INPUT);
-
-    digitalWrite(WE, HIGH);
-  }
-  else 
-  {
+    digitalWrite(WE, LOW);
     pinMode(D0, OUTPUT);
     pinMode(D1, OUTPUT);
     pinMode(D2, OUTPUT);
     pinMode(D3, OUTPUT);
-
-    digitalWrite(WE, LOW);
+  }
+  else 
+  {
+    digitalWrite(WE, HIGH);
+    pinMode(D0, INPUT);
+    pinMode(D1, INPUT);
+    pinMode(D2, INPUT);
+    pinMode(D3, INPUT);
   }
 }
 
-void setup() 
+void setup()
 {
   Serial.begin(9600);
 
@@ -155,29 +123,58 @@ void setup()
   pinMode(Ad8, OUTPUT);
   pinMode(Ad9, OUTPUT);
 
-  SetMode(false);
-
-  DataEntry newData;
-  newData.Data = 10;
-  newData.Size = 4;
-  newData.Start_Address = 1;
-
-  storeData(1, newData);
-  Serial.println("Stored Data");
-
-  delay(1000);
-
-  int* retrievedData = retrieveData(newData);
-  Serial.println("Retrieved Data: ");
-  for (int i = 0; i < 4; i++) 
+  uint16_t* SavedData = decimalToBinary(5, SlotSize);
+  Serial.println("Showing Result Values: ");
+  for (int i = 0; i < SlotSize; i++) 
   {
-    Serial.println(retrievedData[i]);
+    Serial.println(SavedData[i]);
   }
 
+  StoreMemory(SavedData);
+
+  Serial.println("Wrote to Memory");
+  WriteEnable(false);
+  
+  delay(1000);
+  
+  Serial.println("Reading Memory: ");
+  Serial.print(digitalRead(D0));
+  Serial.print(digitalRead(D1));
+  Serial.print(digitalRead(D2));
+  Serial.print(digitalRead(D3));
+
+  delete [] SavedData;
+  
 }
 
 void loop() 
-{
+{}
 
-}
 
+
+
+/*
+ -- SAVED CODE --
+
+ WriteEnable(true);
+  delay(500);
+
+  digitalWrite(Ad0, LOW);
+  digitalWrite(Ad2, LOW);
+  digitalWrite(Ad4, HIGH);
+
+  digitalWrite(D0, 1);
+  digitalWrite(D1, 1);
+  digitalWrite(D2, 1);
+  digitalWrite(D3, 0);
+
+  Serial.println("Wrote to Memory");
+  delay(500);
+  WriteEnable(false);
+  delay(500);
+  Serial.println("Reading Memory: ");
+  Serial.print(digitalRead(D0));
+  Serial.print(digitalRead(D1));
+  Serial.print(digitalRead(D2));
+  Serial.print(digitalRead(D3));
+  */
